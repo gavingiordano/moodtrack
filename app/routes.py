@@ -62,9 +62,8 @@ def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session
 
 @router.put("/entries/{entry_id}", response_model=EntryRead)
 def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
-    entry = session.exec(select(Entry).where(
-        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
-    if not entry:
+    entry = session.get(Entry, entry_id)
+    if not entry or entry.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Entry not found",
@@ -79,9 +78,8 @@ def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depe
 
 @router.delete("/entries/{entry_id}")
 def delete_entry(entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> None:
-    entry = session.exec(select(Entry).where(
-        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
-    if not entry:
+    entry = session.get(Entry, entry_id)
+    if not entry or entry.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Entry not found",
