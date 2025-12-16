@@ -14,7 +14,7 @@ router = APIRouter()
 # Authentication Routes
 
 @router.post("/login", response_model=Token)
-def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
+def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)) -> dict[str, str]:
     user = auth.authenticate_user(
         form_data.username, form_data.password, session)
     if not user:
@@ -31,7 +31,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessio
 
 
 @router.post("/signup", response_model=UserRead)
-def signup_user(user_data: UserCreate, session: Session = Depends(get_session)):
+def signup_user(user_data: UserCreate, session: Session = Depends(get_session)) -> User:
     existing_user = session.exec(select(User).where(
         User.username == user_data.username)).first()
     if existing_user:
@@ -51,7 +51,7 @@ def signup_user(user_data: UserCreate, session: Session = Depends(get_session)):
 # Entry Routes
 
 @router.post("/entries", response_model=EntryRead)
-def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
     new_entry = Entry(mood_score=entry_data.mood_score,
                       comment=entry_data.comment, user_id=current_user.id)
     session.add(new_entry)
@@ -61,7 +61,7 @@ def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session
 
 
 @router.put("/entries/{entry_id}", response_model=EntryRead)
-def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
     entry = session.exec(select(Entry).where(
         Entry.id == entry_id, Entry.user_id == current_user.id)).first()
     if not entry:
@@ -75,3 +75,17 @@ def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depe
     session.commit()
     session.refresh(entry)
     return entry
+
+
+@router.delete("/entries/{entry_id}")
+def delete_entry(entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> None:
+    entry = session.exec(select(Entry).where(
+        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found",
+        )
+    session.delete(entry)
+    session.commit()
+    return None
