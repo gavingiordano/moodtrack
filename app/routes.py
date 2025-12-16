@@ -11,11 +11,10 @@ from sqlmodel import Session, select
 router = APIRouter()
 
 
+# Authentication Routes
+
 @router.post("/login", response_model=Token)
-def login_user(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    session: Session = Depends(get_session)
-):
+def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     user = auth.authenticate_user(
         form_data.username, form_data.password, session)
     if not user:
@@ -47,3 +46,15 @@ def signup_user(user_data: UserCreate, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(new_user)
     return new_user
+
+
+# Entry Routes
+
+@router.post("/entries/new", response_model=EntryRead)
+def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    new_entry = Entry(mood_score=entry_data.mood_score,
+                      comment=entry_data.comment, user_id=current_user.id)
+    session.add(new_entry)
+    session.commit()
+    session.refresh(new_entry)
+    return new_entry
