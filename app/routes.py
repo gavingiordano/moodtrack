@@ -5,13 +5,13 @@ from database import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from models import Entry, User
-from schemas import EntryCreate, EntryRead, UserCreate, UserRead
+from schemas import EntryCreate, EntryRead, Token, UserCreate, UserRead
 from sqlmodel import Session, select
 
 router = APIRouter()
 
 
-@router.post("/login")
+@router.post("/login", response_model=Token)
 def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session)
