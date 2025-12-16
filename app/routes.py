@@ -50,7 +50,7 @@ def signup_user(user_data: UserCreate, session: Session = Depends(get_session)):
 
 # Entry Routes
 
-@router.post("/entries/new", response_model=EntryRead)
+@router.post("/entries", response_model=EntryRead)
 def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     new_entry = Entry(mood_score=entry_data.mood_score,
                       comment=entry_data.comment, user_id=current_user.id)
@@ -58,3 +58,20 @@ def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session
     session.commit()
     session.refresh(new_entry)
     return new_entry
+
+
+@router.put("/entries/{entry_id}", response_model=EntryRead)
+def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    entry = session.exec(select(Entry).where(
+        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found",
+        )
+    entry.mood_score = entry_data.mood_score
+    entry.comment = entry_data.comment
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    return entry
