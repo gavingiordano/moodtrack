@@ -1,18 +1,20 @@
 from datetime import timedelta
 
 import auth
-import database
+from database import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session
+from models import Entry, User
+from schemas import EntryCreate, EntryRead, UserCreate, UserRead
+from sqlmodel import Session, select
 
 router = APIRouter()
 
 
-@router.post("/token")
-async def login_for_access_token(
+@router.post("/login")
+async def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    session: Session = Depends(database.get_session)
+    session: Session = Depends(get_session)
 ):
     user = auth.authenticate_user(
         form_data.username, form_data.password, session)
