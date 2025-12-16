@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.post("/login")
-async def login_user(
+def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session)
 ):
@@ -29,3 +29,21 @@ async def login_user(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/signup", response_model=UserRead)
+def signup_user(user_data: UserCreate, session: Session = Depends(get_session)):
+    existing_user = session.exec(select(User).where(
+        User.username == user_data.username)).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+    hashed_password = auth.get_password_hash(user_data.password)
+    new_user = User(name=user_data.name, username=user_data.username,
+                    hashed_password=hashed_password)
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+    return new_user
