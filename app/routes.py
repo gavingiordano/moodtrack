@@ -17,7 +17,7 @@ templates = Jinja2Templates(directory="templates")
 
 # Authentication Routes
 
-@router.get("/login", response_model=HTMLResponse)
+@router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         "login.html",
@@ -42,7 +42,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessio
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/signup", response_model=HTMLResponse)
+@router.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         "signup.html",
