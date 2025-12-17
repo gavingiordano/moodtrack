@@ -72,6 +72,23 @@ def signup_user(request: Request, name: str = Form(...), username: str = Form(..
 
 # Entry Routes
 
+@router.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    token = request.cookies.get("session")
+    if token and auth.verify_session_token(token):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    else:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, current_user: User = Depends(auth.get_current_user), session: Session = Depends(get_session)):
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "user": current_user}
+    )
+
+
 @router.post("/entries")
 def create_entry(mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     new_entry = Entry(mood_score=mood_score, comment=comment,
