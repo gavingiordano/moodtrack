@@ -2,16 +2,25 @@ from datetime import timedelta
 
 import auth
 from database import get_session
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
 from models import Entry, User
 from schemas import EntryCreate, EntryRead, Token, UserCreate, UserRead
 from sqlmodel import Session, select
 
 router = APIRouter()
 
+templates = Jinja2Templates(directory="templates")
+
 
 # Authentication Routes
+
+@router.get("/login", response_model=HTMLResponse)
+async def login_page(request: Request):
+    pass
+
 
 @router.post("/login", response_model=Token)
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)) -> dict[str, str]:
@@ -28,6 +37,11 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessio
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/signup", response_model=HTMLResponse)
+async def signup_page(request: Request):
+    pass
 
 
 @router.post("/signup", response_model=UserRead)
