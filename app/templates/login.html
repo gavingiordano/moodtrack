@@ -1,0 +1,19 @@
+{% extends "base.html" %} {% block title %}Login - MoodTrack{% endblock %} {% block content %}
+<div class="auth-container">
+    <h1>Login</h1>
+
+    <form hx-post="/login" hx-target="#login-result" hx-swap="innerHTML" class="auth-form">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus placeholder="Enter your Username" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter your Password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+</div>
+{% endblock %}
