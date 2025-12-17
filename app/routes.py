@@ -18,8 +18,11 @@ templates = Jinja2Templates(directory="templates")
 # Authentication Routes
 
 @router.get("/login", response_model=HTMLResponse)
-async def login_page(request: Request):
-    pass
+async def login_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request}
+    )
 
 
 @router.post("/login", response_model=Token)
@@ -40,8 +43,11 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessio
 
 
 @router.get("/signup", response_model=HTMLResponse)
-async def signup_page(request: Request):
-    pass
+async def signup_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        "signup.html",
+        {"request": request}
+    )
 
 
 @router.post("/signup", response_model=UserRead)
@@ -106,7 +112,7 @@ def delete_entry(entry_id: int, session: Session = Depends(get_session), current
 
 
 @router.get("/entries", response_model=list[EntryRead])
-def list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+def list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> list[Entry]:
     entries = session.exec(select(Entry).where(
         Entry.user_id == current_user.id)).all()
     return entries
