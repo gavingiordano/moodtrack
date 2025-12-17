@@ -1,13 +1,12 @@
 from datetime import timedelta
+from typing import Optional
 
 import auth
 from database import get_session
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from models import Entry, User
-from schemas import EntryCreate, EntryRead, Token, UserCreate, UserRead
 from sqlmodel import Session, select
 
 router = APIRouter()
@@ -18,28 +17,28 @@ templates = Jinja2Templates(directory="templates")
 # Authentication Routes
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request) -> HTMLResponse:
+def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         "login.html",
         {"request": request}
     )
 
 
-@router.post("/login", response_model=Token)
-def login_user(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)) -> dict[str, str]:
-    user = auth.authenticate_user(
-        form_data.username, form_data.password, session)
+@router.post("/login")
+def login_user(request: Request, username: str = Form(...), password: str = Form(...), session: Session = Depends(get_session)):
+    user = auth.authenticate_user(username, password, session)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Invalid username or password"},
+            status_code=401
         )
-    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    token = auth.create_session_token(user.id)
+    response = RedirectResponse("/", status_code=303)
+    response.set_cookie("session", token, httponly=True,
+                        secure=False, samesite="lax", max_age=3600)
+    response.headers["HX-Redirect"] = "/"
+    return response
 
 
 @router.get("/signup", response_class=HTMLResponse)
@@ -50,38 +49,41 @@ async def signup_page(request: Request) -> HTMLResponse:
     )
 
 
-@router.post("/signup", response_model=UserRead)
-def signup_user(user_data: UserCreate, session: Session = Depends(get_session)) -> User:
-    existing_user = session.exec(select(User).where(
-        User.username == user_data.username)).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken"
+@router.post("/signup")
+def signup_user(request: Request, name: str = Form(...), username: str = Form(...), password: str = Form(...), session: Session = Depends(get_session)):
+    if session.exec(select(User).where(User.username == username)).first():
+        return templates.TemplateResponse(
+            "signup.html",
+            {"request": request, "error": "Username already taken"},
+            status_code=400
         )
-    hashed_password = auth.get_password_hash(user_data.password)
-    new_user = User(name=user_data.name, username=user_data.username,
-                    hashed_password=hashed_password)
-    session.add(new_user)
+    user = User(name=name, username=username,
+                hashed_password=auth.get_password_hash(password))
+    session.add(user)
     session.commit()
-    session.refresh(new_user)
-    return new_user
+    session.refresh(user)
+    token = auth.create_session_token(user.id)
+    response = RedirectResponse("/", status_code=303)
+    response.set_cookie("session", token, httponly=True,
+                        secure=False, samesite="lax", max_age=3600)
+    response.headers["HX-Redirect"] = "/"
+    return response
 
 
 # Entry Routes
 
-@router.post("/entries", response_model=EntryRead)
-def create_entry(entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
-    new_entry = Entry(mood_score=entry_data.mood_score,
-                      comment=entry_data.comment, user_id=current_user.id)
+@router.post("/entries")
+def create_entry(mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    new_entry = Entry(mood_score=mood_score, comment=comment,
+                      user_id=current_user.id)
     session.add(new_entry)
     session.commit()
     session.refresh(new_entry)
     return new_entry
 
 
-@router.put("/entries/{entry_id}", response_model=EntryRead)
-def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
+@router.put("/entries/{entry_id}")
+def update_entry(entry_id: int, mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
     entry = session.exec(select(Entry).where(
         Entry.id == entry_id, Entry.user_id == current_user.id)).first()
     if not entry:
@@ -89,8 +91,8 @@ def update_entry(entry_id: int, entry_data: EntryCreate, session: Session = Depe
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Entry not found",
         )
-    entry.mood_score = entry_data.mood_score
-    entry.comment = entry_data.comment
+    entry.mood_score = mood_score
+    entry.comment = comment
     session.add(entry)
     session.commit()
     session.refresh(entry)
@@ -111,8 +113,8 @@ def delete_entry(entry_id: int, session: Session = Depends(get_session), current
     return None
 
 
-@router.get("/entries", response_model=list[EntryRead])
-def list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> list[Entry]:
+@router.get("/entries")
+def list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     entries = session.exec(select(Entry).where(
         Entry.user_id == current_user.id)).all()
     return entries
