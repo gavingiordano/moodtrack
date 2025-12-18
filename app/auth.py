@@ -49,20 +49,14 @@ def verify_session_token(token: str) -> int | None:
         return None
 
 
-def get_current_user(
-    request: Request,
-    session: Session = Depends(get_session)
-) -> User:
+def get_current_user(request: Request, session: Session = Depends(get_session)) -> User:
     token = request.cookies.get("session")
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
     user_id = verify_session_token(token)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
     return user
