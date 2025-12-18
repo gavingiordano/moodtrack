@@ -1,0 +1,16 @@
+<nav class="navbar">
+    <div class="nav-container">
+        <span class="moodtrack-title">MoodTrack</span>
+
+        <div class="nav-links">
+            {% if user %}
+            <form method="post" action="/logout">
+                <button type="submit" class="signout-button">Sign Out</button>
+            </form>
+            {% else %}
+            <a href="/login"><button class="auth-button">Login</button></a>
+            <a href="/signup"><button class="auth-button">Signup</button></a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
