@@ -2,5 +2,41 @@
 {% block content %}
 <div class="dashboard">
     <h1>Hello, {{ user.name }}!</h1>
+    <section class="new-entry">
+        <h2>How are you feeling today?</h2>
+        <form hx-post="/entries" hx-target="#entries-list" hx-swap="afterbegin">
+            <div class="mood-score-selector">
+                <label>
+                    <input type="radio" name="mood_score" value="1" required>
+                    <h3>Very Bad</h3>
+                </label>
+                <label>
+                    <input type="radio" name="mood_score" value="2" required>
+                    <h3>Bad</h3>
+                </label>
+                <label>
+                    <input type="radio" name="mood_score" value="3" required>
+                    <h3>Okay</h3>
+                </label>
+                <label>
+                    <input type="radio" name="mood_score" value="4" required>
+                    <h3>Good</h3>
+                </label>
+                <label>
+                    <input type="radio" name="mood_score" value="5" required>
+                    <h3>Great</h3>
+                </label>
+            </div>
+            <div>
+                <label>Any Notes?</label>
+                <input type="text" name="comment" placeholder="Additional comments...">
+            </div>
+            <button type="submit">Save Entry</button>
+        </form>
+    </section>
+    <section class="entries">
+        <h2>Past Entries</h2>
+        <div id="entries-list" hx-get="/entries" hx-trigger="load" hx-swap="innerHTML"></div>
+    </section>
 </div>
 {% endblock %}

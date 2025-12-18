@@ -90,13 +90,16 @@ async def dashboard(request: Request, current_user: User = Depends(auth.get_curr
 
 
 @router.post("/entries")
-def create_entry(mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+def create_entry(request: Request, mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     new_entry = Entry(mood_score=mood_score, comment=comment,
                       user_id=current_user.id)
     session.add(new_entry)
     session.commit()
     session.refresh(new_entry)
-    return new_entry
+    return templates.TemplateResponse(
+        "fragments/entry.html",
+        {"request": request, "entry": new_entry}
+    )
 
 
 @router.put("/entries/{entry_id}")
@@ -131,7 +134,10 @@ def delete_entry(entry_id: int, session: Session = Depends(get_session), current
 
 
 @router.get("/entries")
-def list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+def list_entries(request: Request, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     entries = session.exec(select(Entry).where(
         Entry.user_id == current_user.id)).all()
-    return entries
+    return templates.TemplateResponse(
+        "fragments/entries_list.html",
+        {"request": request, "entries": entries}
+    )

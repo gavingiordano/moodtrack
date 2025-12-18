@@ -13,7 +13,7 @@ load_dotenv()
 
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], bcryp__rounds=12, deprecated="auto")
 
 serializer = URLSafeTimedSerializer(
     SECRET_KEY,

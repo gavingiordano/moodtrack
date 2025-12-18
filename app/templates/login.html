@@ -2,7 +2,11 @@
 <div class="auth-container">
     <h1>Login</h1>
 
-    <form hx-post="/login" hx-target="#login-result" hx-swap="innerHTML" class="auth-form">
+    {% if error %}
+    <p class="error">{{error}}</p>
+    {% endif %}
+
+    <form method="post" action="/login">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required autofocus placeholder="Enter your Username" />
