@@ -4,7 +4,7 @@ from typing import Optional
 import auth
 from database import get_session
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from models import Entry, User
 from sqlmodel import Session, select
@@ -34,7 +34,7 @@ def login_user(request: Request, username: str = Form(...), password: str = Form
             status_code=401
         )
     token = auth.create_session_token(user.id)
-    response = RedirectResponse("/", status_code=303)
+    response = RedirectResponse("/dashboard", status_code=303)
     response.set_cookie("session", token, httponly=True,
                         secure=False, samesite="lax", max_age=3600)
     response.headers["HX-Redirect"] = "/"
@@ -63,7 +63,7 @@ def signup_user(request: Request, name: str = Form(...), username: str = Form(..
     session.commit()
     session.refresh(user)
     token = auth.create_session_token(user.id)
-    response = RedirectResponse("/", status_code=303)
+    response = RedirectResponse("/dashboard", status_code=303)
     response.set_cookie("session", token, httponly=True,
                         secure=False, samesite="lax", max_age=3600)
     response.headers["HX-Redirect"] = "/"
@@ -178,3 +178,18 @@ def cancel_edit(request: Request, entry_id: int, session: Session = Depends(get_
         "fragments/entry.html",
         {"request": request, "entry": entry}
     )
+
+
+@router.get("/api/entries")
+def api_list_entries(session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    entries = session.exec(select(Entry).where(
+        Entry.user_id == current_user.id)).all()
+    entries_data = [
+        {
+            "id": entry.id,
+            "mood_score": entry.mood_score,
+            "comment": entry.comment,
+            "created_at": entry.created_at.isoformat()
+        } for entry in entries
+    ]
+    return JSONResponse(content={"entries": entries_data})
