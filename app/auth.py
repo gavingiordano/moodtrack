@@ -13,7 +13,8 @@ load_dotenv()
 
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-pwd_context = CryptContext(schemes=["bcrypt"], bcryp__rounds=12, deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"], bcrypt__rounds=12, deprecated="auto")
 
 serializer = URLSafeTimedSerializer(
     SECRET_KEY,
@@ -42,8 +43,9 @@ def create_session_token(user_id: int) -> str:
 
 def verify_session_token(token: str) -> int | None:
     try:
-        return serializer.loads(token, max_age=3600)
-    except (BadSignature, SignatureExpired):
+        user_id = serializer.loads(token, max_age=3600)
+        return int(user_id)
+    except (BadSignature, SignatureExpired, ValueError):
         return None
 
 
