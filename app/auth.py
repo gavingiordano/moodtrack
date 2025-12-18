@@ -4,6 +4,7 @@ from typing import Optional
 from database import get_session
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from models import User
 from passlib.context import CryptContext
@@ -60,3 +61,14 @@ def get_current_user(request: Request, session: Session = Depends(get_session)) 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return user
+
+
+def get_current_user_or_redirect(request: Request, session: Session = Depends(get_session)) -> User:
+    try:
+        return get_current_user(request, session)
+    except HTTPException:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail="Not logged in",
+            headers={"Location": "/login"}
+        )

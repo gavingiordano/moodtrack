@@ -82,15 +82,11 @@ async def logout():
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    token = request.cookies.get("session")
-    if token and auth.verify_session_token(token):
-        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
-    else:
-        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, current_user: User = Depends(auth.get_current_user), session: Session = Depends(get_session)):
+async def dashboard(request: Request, current_user: User = Depends(auth.get_current_user_or_redirect), session: Session = Depends(get_session)):
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request, "user": current_user}
