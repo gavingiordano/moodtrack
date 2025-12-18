@@ -2,28 +2,27 @@
     <form hx-put="/entries/{{entry.id}}" hx-target="#entry-{{entry.id}}" hx-swap="outerHTML">
         <div class="mood-score-selector">
             <label>
-                <input type="radio" name="mood_score" value="1" {% if entry.mood_score==1 %}checked{% endif %} required>
-                <span>Very Bad</span>
+                <input type="radio" name="mood_score" value="1" required>
+                <h3>☹️ Very Bad</h3>
             </label>
             <label>
-                <input type="radio" name="mood_score" value="2" {% if entry.mood_score==2 %}checked{% endif %} required>
-                <span>Bad</span>
+                <input type="radio" name="mood_score" value="2" required>
+                <h3>😕 Bad</h3>
             </label>
             <label>
-                <input type="radio" name="mood_score" value="3" {% if entry.mood_score==3 %}checked{% endif %} required>
-                <span>Okay</span>
+                <input type="radio" name="mood_score" value="3" required>
+                <h3>😐 Okay</h3>
             </label>
             <label>
-                <input type="radio" name="mood_score" value="4" {% if entry.mood_score==4 %}checked{% endif %} required>
-                <span>Good</span>
+                <input type="radio" name="mood_score" value="4" required>
+                <h3>🙂 Good</h3>
             </label>
             <label>
-                <input type="radio" name="mood_score" value="5" {% if entry.mood_score==5 %}checked{% endif %} required>
-                <span>Great</span>
+                <input type="radio" name="mood_score" value="5" required>
+                <h3>😃 Great</h3>
             </label>
         </div>
         <div>
-            <label>Any Notes?</label>
             <input type="text" name="comment" value="{{entry.comment or ''}}" placeholder="Additional comments...">
         </div>
         <div class="entry-actions">
