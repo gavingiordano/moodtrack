@@ -70,6 +70,14 @@ def signup_user(request: Request, name: str = Form(...), username: str = Form(..
     return response
 
 
+@router.post("/logout", response_class=HTMLResponse)
+async def logout():
+    response = RedirectResponse(
+        url="/login", status_code=status.HTTP_302_FOUND)
+    response.delete_cookie("session")
+    return response
+
+
 # Entry Routes
 
 @router.get("/", response_class=HTMLResponse)
