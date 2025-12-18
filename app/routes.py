@@ -111,7 +111,7 @@ def create_entry(request: Request, mood_score: int = Form(...), comment: Optiona
 
 
 @router.put("/entries/{entry_id}")
-def update_entry(entry_id: int, mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> Entry:
+def update_entry(request: Request, entry_id: int, mood_score: int = Form(...), comment: Optional[str] = Form(None), session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     entry = session.exec(select(Entry).where(
         Entry.id == entry_id, Entry.user_id == current_user.id)).first()
     if not entry:
@@ -124,11 +124,14 @@ def update_entry(entry_id: int, mood_score: int = Form(...), comment: Optional[s
     session.add(entry)
     session.commit()
     session.refresh(entry)
-    return entry
+    return templates.TemplateResponse(
+        "fragments/entry.html",
+        {"request": request, "entry": entry}
+    )
 
 
 @router.delete("/entries/{entry_id}")
-def delete_entry(entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)) -> None:
+def delete_entry(entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
     entry = session.exec(select(Entry).where(
         Entry.id == entry_id, Entry.user_id == current_user.id)).first()
     if not entry:
@@ -138,7 +141,7 @@ def delete_entry(entry_id: int, session: Session = Depends(get_session), current
         )
     session.delete(entry)
     session.commit()
-    return None
+    return HTMLResponse(content="", status_code=200)
 
 
 @router.get("/entries")
@@ -148,4 +151,34 @@ def list_entries(request: Request, session: Session = Depends(get_session), curr
     return templates.TemplateResponse(
         "fragments/entries_list.html",
         {"request": request, "entries": entries}
+    )
+
+
+@router.get("/entries/{entry_id}/edit")
+def edit_entry_form(request: Request, entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    entry = session.exec(select(Entry).where(
+        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found",
+        )
+    return templates.TemplateResponse(
+        "fragments/entry_edit.html",
+        {"request": request, "entry": entry}
+    )
+
+
+@router.get("/entries/{entry_id}/cancel")
+def cancel_edit(request: Request, entry_id: int, session: Session = Depends(get_session), current_user: User = Depends(auth.get_current_user)):
+    entry = session.exec(select(Entry).where(
+        Entry.id == entry_id, Entry.user_id == current_user.id)).first()
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found",
+        )
+    return templates.TemplateResponse(
+        "fragments/entry.html",
+        {"request": request, "entry": entry}
     )

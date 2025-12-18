@@ -1,0 +1,37 @@
+<div class="entry" id="entry-{{entry.id}}">
+    <form hx-put="/entries/{{entry.id}}" hx-target="#entry-{{entry.id}}" hx-swap="outerHTML">
+        <div class="mood-score-selector">
+            <label>
+                <input type="radio" name="mood_score" value="1" {% if entry.mood_score==1 %}checked{% endif %} required>
+                <span>Very Bad</span>
+            </label>
+            <label>
+                <input type="radio" name="mood_score" value="2" {% if entry.mood_score==2 %}checked{% endif %} required>
+                <span>Bad</span>
+            </label>
+            <label>
+                <input type="radio" name="mood_score" value="3" {% if entry.mood_score==3 %}checked{% endif %} required>
+                <span>Okay</span>
+            </label>
+            <label>
+                <input type="radio" name="mood_score" value="4" {% if entry.mood_score==4 %}checked{% endif %} required>
+                <span>Good</span>
+            </label>
+            <label>
+                <input type="radio" name="mood_score" value="5" {% if entry.mood_score==5 %}checked{% endif %} required>
+                <span>Great</span>
+            </label>
+        </div>
+        <div>
+            <label>Any Notes?</label>
+            <input type="text" name="comment" value="{{entry.comment or ''}}" placeholder="Additional comments...">
+        </div>
+        <div class="entry-actions">
+            <button type="submit">Save</button>
+            <button type="button" hx-get="/entries/{{entry.id}}/cancel" hx-target="#entry-{{entry.id}}"
+                hx-swap="outerHTML">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
