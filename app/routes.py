@@ -36,7 +36,7 @@ def login_user(request: Request, username: str = Form(...), password: str = Form
     token = auth.create_session_token(user.id)
     response = RedirectResponse("/dashboard", status_code=303)
     response.set_cookie("session", token, httponly=True,
-                        secure=False, samesite="lax", max_age=3600)
+                        secure=True, samesite="lax", max_age=3600)
     response.headers["HX-Redirect"] = "/"
     return response
 
@@ -65,7 +65,7 @@ def signup_user(request: Request, name: str = Form(...), username: str = Form(..
     token = auth.create_session_token(user.id)
     response = RedirectResponse("/dashboard", status_code=303)
     response.set_cookie("session", token, httponly=True,
-                        secure=False, samesite="lax", max_age=3600)
+                        secure=True, samesite="lax", max_age=3600)
     response.headers["HX-Redirect"] = "/"
     return response
 
