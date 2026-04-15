@@ -1,0 +1,220 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+case $- in
+*i*) ;;
+*) return ;;
+esac
+
+# don't put duplicate lines or lines starting with space in the history.
+# See bash(1) for more options
+HISTCONTROL=ignoreboth
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
+#shopt -s globstar
+
+# make less more friendly for non-text input files, see lesspipe(1)
+#[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+  debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# set a fancy prompt (non-color, unless we know we "want" color)
+case "$TERM" in
+xterm-color | *-256color) color_prompt=yes ;;
+esac
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+  test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+  alias ls='ls --color=auto'
+  alias dir='dir --color=auto'
+  alias vdir='vdir --color=auto'
+
+  alias grep='grep --color=auto'
+  alias fgrep='fgrep --color=auto'
+  alias egrep='egrep --color=auto'
+fi
+
+# some more ls aliases
+alias ll='ls -l'
+alias la='ls -A'
+alias l='ls -CF'
+alias lt='tree -L 1'
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+if [ -f ~/.bash_aliases ]; then
+  . ~/.bash_aliases
+fi
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+
+# Check if the terminal is xterm
+if [[ "$TERM" == "xterm" ]]; then
+  # Function to set the terminal title to the current command
+  preexec() {
+    local cmd="${BASH_COMMAND}"
+    echo -ne "\033]0;${USER}@${HOSTNAME}: ${cmd}\007"
+  }
+
+  # Function to reset the terminal title to the shell type after the command is executed
+  precmd() {
+    echo -ne "\033]0;${USER}@${HOSTNAME}: ${SHELL}\007"
+  }
+
+  # Trap DEBUG signal to call preexec before each command
+  trap 'preexec' DEBUG
+
+  # Append to PROMPT_COMMAND to call precmd before displaying the prompt
+  PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }precmd"
+fi
+
+docker_summary() {
+  if command -v docker >/dev/null 2>&1; then
+    local nets_list ctrs_list vols_list cpu mem_kb mem_h
+    local current_container_id current_network
+
+    # Get current container ID - try hostname first (works in most containers)
+    current_container_id=$(hostname 2>/dev/null)
+
+    # Verify it's a valid container ID
+    if ! docker inspect "$current_container_id" >/dev/null 2>&1; then
+      # Fallback: try to extract from cgroup (older Docker/cgroup v1)
+      current_container_id=$(cat /proc/self/cgroup 2>/dev/null | grep -o -E '[a-f0-9]{64}' | head -1 | cut -c1-12)
+    fi
+
+    # Get networks this container is connected to
+    if [ -n "$current_container_id" ] && docker inspect "$current_container_id" >/dev/null 2>&1; then
+      current_network=$(docker inspect "$current_container_id" --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}' 2>/dev/null | head -c 12)
+      if [ -n "$current_network" ]; then
+        nets_list=$(docker network inspect "$current_network" --format '{{.Name}}' 2>/dev/null)
+      fi
+    fi
+
+    # Fallback to listing custom networks if we couldn't detect current network
+    if [ -z "$nets_list" ]; then
+      nets_list=$(docker network ls --format '{{.Name}}' 2>/dev/null | grep -v '^bridge$\|^host$\|^none$' | head -n5)
+    fi
+    [ -z "$nets_list" ] && nets_list="default"
+
+    # Get containers on the same network, excluding self
+    if [ -n "$current_network" ]; then
+      ctrs_list=$(docker ps --filter "network=${current_network}" --format '{{.Names}}' 2>/dev/null | grep -v "^$(docker inspect "$current_container_id" --format '{{.Name}}' 2>/dev/null | sed 's/^\///')" | head -n10)
+    else
+      # Fallback: show running containers if we can't detect network
+      ctrs_list=$(docker ps --format '{{.Names}}' 2>/dev/null | head -n5)
+    fi
+    [ -z "$ctrs_list" ] && ctrs_list="none"
+
+    # Get volumes actually mounted in this container with their mount paths
+    if [ -n "$current_container_id" ] && docker inspect "$current_container_id" >/dev/null 2>&1; then
+      vols_list=$(docker inspect "$current_container_id" --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}|{{.Source}}|{{.Destination}}{{"\n"}}{{end}}{{end}}' 2>/dev/null | head -n10)
+    fi
+    [ -z "$vols_list" ] && vols_list="none"
+
+    cpu=$(nproc 2>/dev/null || echo '?')
+    mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+    if [ "$mem_kb" -gt 0 ] 2>/dev/null; then
+      mem_h=$(awk "BEGIN{printf \"%.1fG\", $mem_kb/1024/1024}")
+    else
+      mem_h='?'
+    fi
+
+    # Pretty-printed docker environment summary
+    echo ""
+    echo -e "\033[2mDocker Environment\033[0m"
+    echo ""
+    echo -e "\033[36mNetworks:\033[0m"
+    echo "$nets_list" | while read -r net; do
+      [ -n "$net" ] && echo -e "  \033[2m•\033[0m $net"
+    done
+    echo ""
+    echo -e "\033[32mContainers:\033[0m"
+    if [ "$ctrs_list" = "none" ]; then
+      echo -e "  \033[2m• none\033[0m"
+    else
+      echo "$ctrs_list" | while read -r ctr; do
+        [ -n "$ctr" ] && echo -e "  \033[2m•\033[0m $ctr"
+      done
+    fi
+    echo ""
+    echo -e "\033[33mVolumes:\033[0m"
+    if [ "$vols_list" = "none" ]; then
+      echo -e "  \033[2m• none\033[0m"
+    else
+      echo "$vols_list" | while IFS='|' read -r vol_name vol_host vol_container; do
+        if [ -n "$vol_name" ]; then
+          echo -e "  \033[2m•\033[0m $vol_name"
+          echo -e "    \033[2mHost:\033[0m $vol_host"
+          echo -e "    \033[2mContainer:\033[0m $vol_container"
+        fi
+      done
+    fi
+    echo ""
+    echo -e "\033[35mResources:\033[0m CPU=${cpu} cores, Memory=${mem_h}"
+    echo ""
+
+    # Show connection examples for known services
+    local has_redis=false has_postgres=false
+    echo "$ctrs_list" | grep -q "dev_redis" && has_redis=true
+    echo "$ctrs_list" | grep -q "dev_pg" && has_postgres=true
+
+    if [ "$has_redis" = true ] || [ "$has_postgres" = true ]; then
+      echo -e "\033[36mQuick Connect:\033[0m"
+      if [ "$has_redis" = true ]; then
+        echo -e "  \033[2m•\033[0m Redis:  \033[33mredis-cli -h dev_redis\033[0m"
+      fi
+      if [ "$has_postgres" = true ]; then
+        echo -e "  \033[2m•\033[0m PostgreSQL:  \033[33mpsql -h dev_pg -U app -d db (password: app)\033[0m"
+      fi
+      echo ""
+    fi
+  fi
+}
+
+update_prompt() {
+  PS1='\n╭───────────────────╮\n│ \[\e[34m\]cicsdev_326 \[\e[32m\]1.1.0\[\e[0m\] │ ⌖ \[\e[34m\]\w\[\e[0m\]\n╰───────────────────╯\n\[\e[2m\]λ \[\e[0m\]'
+}
+
+# Print docker summary once per session
+if [ -z "${__DEVCONTAINER_PROMPT_PRINTED:-}" ] && [ -n "${PS1:-}" ] && [ -t 1 ]; then
+  if command -v docker_summary >/dev/null 2>&1; then
+    docker_summary
+  fi
+  __DEVCONTAINER_PROMPT_PRINTED=1
+  export __DEVCONTAINER_PROMPT_PRINTED
+fi
+
+# Set the prompt (always, for interactive shells)
+if [ -n "${PS1:-}" ]; then
+  update_prompt
+fi
