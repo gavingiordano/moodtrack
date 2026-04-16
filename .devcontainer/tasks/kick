@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Task runner for development environment
+# Usage: kick <task> [arguments...]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TASKS_DIR="$SCRIPT_DIR"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help function
+show_help() {
+    echo -e "${BLUE}Development Environment Task Runner${NC}"
+    echo ""
+    echo "Usage: kick <task> [arguments...]"
+    echo ""
+    echo "Available tasks:"
+    
+    if [[ -d "$TASKS_DIR" ]]; then
+        for script in "$TASKS_DIR"/*.sh; do
+            if [[ -f "$script" ]]; then
+                task_name=$(basename "$script" .sh)
+                # Try to extract description from script header
+                description=$(head -10 "$script" | grep "^# Description:" | cut -d: -f2- | sed 's/^ *//' || echo "")
+                if [[ -n "$description" ]]; then
+                    printf "  %-15s %s\n" "$task_name" "$description"
+                else
+                    printf "  %-15s\n" "$task_name"
+                fi
+            fi
+        done
+    fi
+    
+    echo ""
+    echo "Examples:"
+    echo "  kick svc-up           # Start services"
+    echo "  kick svc-ps           # Check service status"
+    echo "  kick help             # Show this help"
+}
+
+# Main logic
+main() {
+    # Check if any arguments provided
+    if [[ $# -eq 0 ]]; then
+        echo -e "${RED}Error: No task specified${NC}"
+        echo ""
+        show_help
+        exit 1
+    fi
+    
+    local task="$1"
+    shift # Remove task name from arguments
+    
+    # Handle built-in commands
+    case "$task" in
+        "help"|"-h"|"--help")
+            show_help
+            exit 0
+            ;;
+        "list")
+            show_help
+            exit 0
+            ;;
+    esac
+    
+    # Look for task script
+    local task_script="$TASKS_DIR/${task}.sh"
+    
+    if [[ ! -f "$task_script" ]]; then
+        echo -e "${RED}Error: Task '$task' not found${NC}"
+        echo ""
+        echo "Available tasks:"
+        for script in "$TASKS_DIR"/*.sh; do
+            if [[ -f "$script" ]]; then
+                task_name=$(basename "$script" .sh)
+                echo "  $task_name"
+            fi
+        done
+        exit 1
+    fi
+    
+    # Check if script is executable
+    if [[ ! -x "$task_script" ]]; then
+        echo -e "${YELLOW}Warning: Making $task_script executable${NC}"
+        chmod +x "$task_script"
+    fi
+    
+    # Execute the task script with remaining arguments
+    echo -e "${GREEN}Running task: $task${NC}"
+    exec "$task_script" "$@"
+}
+
+# Run main function with all arguments
+main "$@"

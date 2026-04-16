@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Print all networks from the local docker compose file.
+# Output: one network per line. Includes "default" if no explicit networks are present.
+# Fails (non-zero) if no compose file is found or parsing fails.
+compose_networks() {
+  # Find a compose file in the current directory
+  local files=(docker-compose.yml docker-compose.yaml compose.yml compose.yaml)
+  local compose_file=""
+  for f in "${files[@]}"; do
+    if [[ -f "$f" ]]; then
+      compose_file="$f"
+      break
+    fi
+  done
+
+  if [[ -z "${compose_file}" ]]; then
+    echo "Error: No docker compose file found in current directory." >&2
+    echo "Looked for: ${files[*]}" >&2
+    return 1
+  fi
+
+  # Check dependencies
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Error: docker is not installed or not in PATH." >&2
+    return 1
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    echo "Error: docker compose (v2) is not available." >&2
+    return 1
+  fi
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is required for parsing compose output. Please install jq." >&2
+    return 1
+  fi
+
+  # Get normalized config as JSON
+  local cfg
+  if ! cfg="$(docker compose -f "$compose_file" config --format json)"; then
+    echo "Error: Failed to parse compose file: $compose_file" >&2
+    return 1
+  fi
+
+  # Use jq to extract:
+  # 1) top-level defined networks (keys under .networks)
+  # 2) networks referenced by services (object keys or array values)
+  # If none found but services exist, print "default".
+  local nets
+  nets="$(jq -r '
+    def top_nets: (.networks // {}) | keys[];
+    def svc_nets:
+      (.services // {}) 
+      | to_entries[]
+      | .value.networks
+      | if type=="object" then keys[] 
+        elif type=="array" then .[] 
+        else empty end;
+
+    . as $cfg
+    | [ (top_nets), (svc_nets) ] 
+    | unique
+    | if (length == 0) and (($cfg.services // {}) | length > 0) then
+        ["default"] 
+      else
+        .
+      end
+    | .[]
+  ' <<<"$cfg")"
+
+  if [[ -z "$nets" ]]; then
+    echo "Error: No services or networks found in $compose_file." >&2
+    return 1
+  fi
+
+  # Print one per line
+  printf '%s\n' "$nets"
+}
+
+container_name() {
+  local container
+  container=$(docker ps | grep "$CONTAINER_BASE_NAME")
+  echo "$container" | awk '{print $2}'
+}
+
+joinet() {
+  for net in $(compose_networks); do
+    if docker network ls | grep -q "$net"; then
+      network="$(docker network ls | grep "$net")"
+      echo "Joining network: $network"
+      echo docker network connect "$network" "$(container_name)"
+      # docker network connect "$net" "$(container_name)"
+    fi
+    echo "Joining network: $net"
+    docker network connect "$net" "$(container_name)"
+  done
+}
+
+joinet
