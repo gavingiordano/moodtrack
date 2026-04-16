@@ -1,7 +1,0 @@
-Bringing up services: postgres redis
- Container dev_redis  Running
- Container dev_pg  Running
-Devcontainer already connected to network dev-svcs_default or attach not required.
-NAME        IMAGE            COMMAND                  SERVICE    CREATED        STATUS                PORTS
-dev_pg      postgres:16      "docker-entrypoint.s…"   postgres   6 months ago   Up 2 days (healthy)   5432/tcp
-dev_redis   redis:7-alpine   "docker-entrypoint.s…"   redis      6 months ago   Up 2 days (healthy)   6379/tcp
